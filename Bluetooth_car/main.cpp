@@ -6,7 +6,7 @@
  */ 
 
 #include <avr/io.h>
-#define F_CPU 16000000
+#define F_CPU 8000000
 #define BAUD 9600
 #define UBRR_VALUE ((F_CPU / (16 * BAUD)) - 1)
 
@@ -52,9 +52,9 @@ void speed(float left, float right, float percent);
 void INIT();
 void handle(int goc);
 
-int temp;
+volatile int temp;
 
-void uart_send(unsigned char c)
+void uart_send(char c)
 {
 	while (!(UCSRA & (1<<UDRE))) {}; //cho den khi bit UDRE=1
 	UDR = c;
@@ -69,52 +69,69 @@ unsigned char USART_Receive()
 
 int main(void)
 {
-	INIT();
-	//DDRD = 0x00;
+	//INIT();
+	DDRD = 0x00;
 	//PORTD = 0x00;
 	
 	//DDRA = 0xff;
 	//PORTA = 0x00;
 	/********  USART Init *********/
-	UBRRH = (103 >> 8);
-	UBRRL = 103;
+	UBRRH = 0;
+	UBRRL = 51;
 	
-	//UCSRA = 0x00;
+	UCSRA = 0x00;
 	//UCSRB = (1 << TXEN);
 	UCSRC = (1 << URSEL) | (1 << UCSZ1) | (1 << UCSZ0);
 	UCSRB = (1 << RXEN) | (1 << TXEN) | (1 << RXCIE);
 	
 	/******* PWM Init **********/
-	
+	DDRA = 0xFF;
+	PORTA = 0xff;
 	sei();
     /* Replace with your application code */
     while (1) 
     {
-		if (temp == 1) speed(50,50,50);
-		else if (temp == 2) speed(0,0,0);
+		//PORTA ^= 0xff;
+		if (temp == 1) 
+		{
+			PORTA ^= (1 <<0);
+			temp = 0;
+		}
+		else if (temp == 2) 
+		{
+			PORTA ^= (1 << 1);
+			temp = 0;
+		}
+		//uart_send('a');
+		//_delay_ms(1000);
+		//if (temp == 1) speed(50,50,50);
+		//else if (temp == 2) speed(0,0,0);
 		//unsigned char data = USART_Receive();
 		//if (data == '1') PORTA = (1 << 0);
-		for (unsigned char i = 32; i < 128; i++)
-		{
+		//for (unsigned char i = 32; i < 128; i++)
+		//{
 			//uart_send(i);
 			//_delay_ms(100);
-		}
+		//}
     }
 }
 
 ISR(USART_RXC_vect)
 {
-	uint8_t data = UDR;
-	UDR = data;
+	char data = UDR;
+	
+	uart_send(data);
 	switch (data)
 	{
 		case '1':
 			temp = 1;
-			speed(50,50,100);
+			//PORTA ^= (1 << 0);
+			//speed(50,50,100);
 		break;
 		case '2':
 			temp = 2;
-			speed(0,0,0);
+			//PORTA ^= (1 << 1);
+			//speed(0,0,0);
 		break;
 		default:
 			//PORTA ^= (1 << 2);
